@@ -1,0 +1,64 @@
+# Traefik configuration file
+# See https://doc.traefik.io/traefik/getting-started/configuration-overview/
+
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+# -- (Optional) Log information
+# ---
+log:
+  level: INFO # (Default: ERROR) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+  format: common # common, json, logfmt
+  filePath: /var/log/traefik/traefik.log
+
+# -- (Optional) Accesslog
+# ---
+accesslog:
+  format: common # common, json, logfmt
+  filePath: /var/log/traefik/access.log
+
+# -- (Optional) API and Dashboard
+# ---
+api:
+  dashboard: true # (Default: true)
+  insecure: true # (Default: false) Don't do this in production!
+
+# -- Entrypoints
+# ---
+entryPoints:
+  web:
+    address: ":80"
+    # (Optional) Redirect to HTTPS
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+
+# -- Certificate Resolvers
+# ---
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "your-email@example.com" # This will be replaced by the install script
+      storage: "acme.json"
+      httpChallenge:
+        entryPoint: web
+
+# -- Providers
+# ---
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: proxy
+  file:
+    filename: /traefik.yml
+    watch: true

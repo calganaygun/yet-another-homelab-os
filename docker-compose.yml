@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: "traefik:v3.0"
+    container_name: "traefik"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./config/traefik/traefik.yml:/traefik.yml:ro"
+      - "./config/traefik/acme.json:/acme.json"
+    labels:
+      - "traefik.enable=true"
+      # Add other labels for dashboard, etc.
+
+  tinyauth:
+    image: "ghcr.io/steveiliop56/tinyauth:v3"
+    container_name: "tinyauth"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - proxy
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    environment:
+      - "SECRET=${YETHOS_TINYAUTH_SECRET}"
+      - "APP_URL=https://auth.${YETHOS_DOMAIN}"
+      - "USERS=${YETHOS_TINYAUTH_USERS}"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tinyauth.rule=Host(`auth.${YETHOS_DOMAIN}`)"
+      - "traefik.http.middlewares.tinyauth.forwardauth.address=http://tinyauth:3000/api/auth/traefik"
+
+networks:
+  proxy:
+    name: proxy
+    driver: bridge
+

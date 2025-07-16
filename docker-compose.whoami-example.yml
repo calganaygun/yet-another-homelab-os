@@ -1,0 +1,30 @@
+# This is an example of how to add a new service and protect it with TinyAuth.
+# To use this, you can either merge it into your main docker-compose.yml
+# or run it alongside using:
+# docker-compose -f docker-compose.yml -f docker-compose.whoami-example.yml up -d
+
+services:
+  whoami:
+    image: "traefik/whoami"
+    container_name: "whoami"
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.${YETHOS_DOMAIN}`)"
+      - "traefik.http.routers.whoami.middlewares=tinyauth@docker"
+
+      # --- Access Control Examples (uncomment to use) ---
+
+      # Restrict access to specific users (comma-separated)
+      - "tinyauth.users=user1,user2"
+
+      # Restrict access to users matching a regex
+      # - "tinyauth.users=/@example.com$/"
+
+      # Allow requests from a specific IP or CIDR to bypass authentication
+      - "tinyauth.ip.bypass=192.168.1.100,10.0.0.0/24"
+
+      # Allow unauthenticated access to specific paths (regex)
+      - "tinyauth.allowed=/api/public"
