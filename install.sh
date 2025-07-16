@@ -27,6 +27,7 @@ error() {
 check_dependencies() {
     info "Checking for required tools..."
     local missing_tools=()
+    # Removed python3, will add htpasswd check in its own function
     local tools=("curl" "openssl" "sed")
 
     for tool in "${tools[@]}"; do
@@ -40,6 +41,30 @@ check_dependencies() {
     fi
     info "All required tools are present."
 }
+
+# Function to install htpasswd utility
+install_htpasswd() {
+    if command -v htpasswd &> /dev/null; then
+        info "htpasswd (apache2-utils) is already installed."
+        return
+    fi
+
+    info "Installing htpasswd (apache2-utils)..."
+    case "$OS" in
+        "Ubuntu" | "Debian")
+            apt-get update
+            apt-get install -y apache2-utils
+            ;;
+        "CentOS" | "Fedora" | "Red Hat Enterprise Linux")
+            yum install -y httpd-tools
+            ;;
+        *)
+            error "Unsupported OS: $OS. Please install apache2-utils (or httpd-tools) manually."
+            ;;
+    esac
+    info "htpasswd installed successfully."
+}
+
 
 # Function to check if the script is run as root
 check_root() {
@@ -174,14 +199,18 @@ configure_tinyauth() {
                 continue
             fi
 
-            info "Generating user hash for $username..."
+            info "Generating user hash for $username with htpasswd..."
             local user_hash
-            user_hash=$(docker run --rm ghcr.io/steveiliop56/tinyauth:v3 user create --username "$username" --password "$password" --docker)
+            user_hash=$(htpasswd -nbB -C 10 "$username" "$password")
             
+            # Escape the hash for Docker Compose .env file
+            local escaped_hash
+            escaped_hash=$(echo "$user_hash" | sed 's/\\$/\\$\$/g')
+
             if [ -z "$users_list" ]; then
-                users_list="$user_hash"
+                users_list="$escaped_hash"
             else
-                users_list="$users_list,$user_hash"
+                users_list="$users_list,$escaped_hash"
             fi
 
             read -p "Do you want to add another user? (y/n): " add_another
@@ -192,7 +221,7 @@ configure_tinyauth() {
         YETHOS_TINYAUTH_USERS=$users_list
     else
         info "Using existing TinyAuth users."
-        info "To add more users, run './yethos-cli.sh user create' after installation."
+        info "To add more users, run './yethos-cli.sh tinyauth user create --interactive'."
     fi
 }
 
@@ -256,6 +285,7 @@ main() {
     check_dependencies
     check_root
     detect_distro
+    install_htpasswd
     install_docker
     install_docker_compose
 
