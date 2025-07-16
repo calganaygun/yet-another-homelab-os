@@ -65,7 +65,7 @@ main() {
     info "Changed directory to $REPO_DIR."
 
     info "Executing the main installation script..."
-    bash install.sh
+    sudo bash install.sh
 
     info "Deployment script finished."
 }
